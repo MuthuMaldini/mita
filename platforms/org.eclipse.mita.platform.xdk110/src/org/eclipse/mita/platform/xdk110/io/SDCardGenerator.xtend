@@ -105,7 +105,7 @@ class SDCardGenerator extends AbstractSystemResourceGenerator {
 		val data = sigInst.dataAccessor(valueVariableName);
 		val len = sigInst.getSize;
 		val filename = sigInst.filenameAccessor(valueVariableName);
-		val fileSeekIndex = if (sigInst.instanceOf.name.startsWith("persistentFile")) {
+		val fileSeekIndex = if (sigInst.instanceOf.name.startsWith("appendingFile")) {
 				codeFragmentProvider.create('''«sigInst.name»FilePosition''');
 			} else {
 				codeFragmentProvider.create('''0''');
@@ -159,7 +159,7 @@ class SDCardGenerator extends AbstractSystemResourceGenerator {
 		val data = sigInst.dataAccessor(valueVariableName);
 		val len = sigInst.lenAccessor(valueVariableName);
 		val filename = sigInst.filenameAccessor(valueVariableName);
-		val fileSeekIndex = if (sigInst.instanceOf.name.startsWith("persistentFile")) {
+		val fileSeekIndex = if (sigInst.instanceOf.name.startsWith("appendingFile")) {
 				codeFragmentProvider.create('''«sigInst.name»FilePosition''');
 			} else {
 				codeFragmentProvider.create('''0''');

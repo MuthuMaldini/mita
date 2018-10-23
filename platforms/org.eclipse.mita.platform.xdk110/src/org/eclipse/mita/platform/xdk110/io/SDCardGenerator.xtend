@@ -1,13 +1,13 @@
 /********************************************************************************
  * Copyright (c) 2017, 2018 Bosch Connected Devices and Solutions GmbH.
- *
+ * 
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License 2.0 which is available at
  * http://www.eclipse.org/legal/epl-2.0.
- *
+ * 
  * Contributors:
  *    Bosch Connected Devices and Solutions GmbH - initial contribution
- *
+ * 
  * SPDX-License-Identifier: EPL-2.0
  ********************************************************************************/
 
@@ -25,63 +25,54 @@ import org.eclipse.mita.program.generator.IPlatformLoggingGenerator
 import org.eclipse.mita.program.generator.IPlatformLoggingGenerator.LogLevel
 
 class SDCardGenerator extends AbstractSystemResourceGenerator {
-	
+
 	@Inject(optional=true)
 	protected IPlatformLoggingGenerator loggingGenerator
 
 	override generateSetup() {
 		codeFragmentProvider.create('''
+		''').addHeader('BCDS_Basics.h', true, IncludePath.VERY_HIGH_PRIORITY).addHeader('BCDS_Retcode.h', true,
+			IncludePath.VERY_HIGH_PRIORITY).addHeader("FreeRTOS.h", true, IncludePath.HIGH_PRIORITY).addHeader("task.h",
+			true).addHeader("string.h", true).addHeader("XdkCommonInfo.h", true).addHeader("ff.h", true).addHeader(
+			"BCDS_SDCard_Driver.h", true).setPreamble('''
+			static FATFS StorageSDCardFatFSObject; /** File system specific objects */
+			/**< Macro to define default logical drive */
+			#define STORAGE_DEFAULT_LOGICAL_DRIVE           ""
+			
+			/**< Macro to define force mount */
+			#define STORAGE_SDCARD_FORCE_MOUNT              UINT8_C(1)
+			
+			/**< SD Card Drive 0 location */
+			#define STORAGE_SDCARD_DRIVE_NUMBER             UINT8_C(0)
+			
+			«FOR sigInst : setup.signalInstances»
+				«IF sigInst.instanceOf.name.startsWith("appendingFile")»
+					static uint16_t «sigInst.name»FilePosition = 0UL;
+				«ENDIF»
+			«ENDFOR»
+			
 		''')
-		.addHeader('BCDS_Basics.h', true, IncludePath.VERY_HIGH_PRIORITY)
-		.addHeader('BCDS_Retcode.h', true, IncludePath.VERY_HIGH_PRIORITY)
-		.addHeader("FreeRTOS.h", true, IncludePath.HIGH_PRIORITY)
-		.addHeader("task.h", true)
-		.addHeader("string.h", true)
-		.addHeader("XdkCommonInfo.h", true)
-		.addHeader("ff.h", true)
-		.addHeader("BCDS_SDCard_Driver.h", true)
-		.setPreamble('''
-		static FATFS StorageSDCardFatFSObject; /** File system specific objects */
-		/**< Macro to define default logical drive */
-		#define STORAGE_DEFAULT_LOGICAL_DRIVE           ""
-
-		/**< Macro to define force mount */
-		#define STORAGE_SDCARD_FORCE_MOUNT              UINT8_C(1)
-
-		/**< SD Card Drive 0 location */
-		#define STORAGE_SDCARD_DRIVE_NUMBER             UINT8_C(0)
-
-		«FOR sigInst : setup.signalInstances»
-		«IF sigInst.instanceOf.name.startsWith("appendingFile")»
-		static uint16_t «sigInst.name»FilePosition = 0UL;
-		«ENDIF»
-		«ENDFOR»
-
-		''')
-
 
 	}
-	
+
 	def CodeFragment getSize(SignalInstance instance) {
 		val result = StaticValueInferrer.infer(ModelUtils.getArgumentValue(instance, instance.sizeName), []);
-		if(result instanceof Integer) {
+		if (result instanceof Integer) {
 			return codeFragmentProvider.create('''«result»''');
+		} else {
+			return codeFragmentProvider.create('''-1''');
 		}
-		else {
-			return codeFragmentProvider.create('''-1''');	
-		}
-		
+
 	}
-	
+
 	static def String getSizeName(SignalInstance instance) {
-		if(instance.instanceOf.name.startsWith("appendingFile")) {
+		if (instance.instanceOf.name.startsWith("appendingFile")) {
 			return "blockSize";
-		} 
-		else {
+		} else {
 			return "fileSize";
 		}
 	}
-	
+
 	override generateEnable() {
 		codeFragmentProvider.create('''
 			Retcode_T retcode = RETCODE_OK;
@@ -109,16 +100,15 @@ class SDCardGenerator extends AbstractSystemResourceGenerator {
 			return retcode;
 		''')
 	}
-	
+
 	override generateSignalInstanceGetter(SignalInstance sigInst, String valueVariableName) {
 		val data = sigInst.dataAccessor(valueVariableName);
 		val len = sigInst.getSize;
 		val filename = sigInst.filenameAccessor(valueVariableName);
-		val fileSeekIndex = if(sigInst.instanceOf.name.startsWith("persistentFile")) {
-			    codeFragmentProvider.create('''«sigInst.name»FilePosition''');
-			} 
-			else {
-			    codeFragmentProvider.create('''0''');
+		val fileSeekIndex = if (sigInst.instanceOf.name.startsWith("persistentFile")) {
+				codeFragmentProvider.create('''«sigInst.name»FilePosition''');
+			} else {
+				codeFragmentProvider.create('''0''');
 			}
 		codeFragmentProvider.create('''
 			Retcode_T retcode = RETCODE_OK;
@@ -141,18 +131,21 @@ class SDCardGenerator extends AbstractSystemResourceGenerator {
 			}
 			if(«fileSeekIndex» >= sdCardFileInfo.fsize)
 			{
-				return EXCEPTION_ENDOFFILEEXCEPTION;
+				sdCardReturn = FR_INVALID_PARAMETER;
 			}
 			if ((FR_OK == sdCardReturn) && (FR_OK == fileOpenReturn))
 			{
 			    sdCardReturn = f_read(&fileReadHandle, «data», «len», &bytesRead); /* Read a chunk of source file */
 			}
-			if ((FR_OK == sdCardReturn) && (FR_OK == fileOpenReturn))
+			if (FR_OK == sdCardReturn)
 			{
 				«IF sigInst.instanceOf.name.startsWith("appendingFile")»
-				«sigInst.name»FilePosition += bytesRead;
+					«sigInst.name»FilePosition += bytesRead;
 				«ENDIF»
-			    sdCardReturn = f_close(&fileReadHandle);
+			}
+			if (FR_OK == fileOpenReturn)
+			{
+				sdCardReturn = f_close(&fileReadHandle);
 			}
 			if ((FR_OK != sdCardReturn) || (FR_OK != fileOpenReturn))
 			{
@@ -161,18 +154,17 @@ class SDCardGenerator extends AbstractSystemResourceGenerator {
 			return retcode;
 		''')
 	}
-		
+
 	override generateSignalInstanceSetter(SignalInstance sigInst, String valueVariableName) {
 		val data = sigInst.dataAccessor(valueVariableName);
 		val len = sigInst.lenAccessor(valueVariableName);
 		val filename = sigInst.filenameAccessor(valueVariableName);
-		val fileSeekIndex = if(sigInst.instanceOf.name.startsWith("persistentFile")) {
-			    codeFragmentProvider.create('''«sigInst.name»FilePosition''');
-			} 
-			else {
-			    codeFragmentProvider.create('''0''');
+		val fileSeekIndex = if (sigInst.instanceOf.name.startsWith("persistentFile")) {
+				codeFragmentProvider.create('''«sigInst.name»FilePosition''');
+			} else {
+				codeFragmentProvider.create('''0''');
 			}
-		
+
 		codeFragmentProvider.create('''
 			Retcode_T retcode = RETCODE_OK;
 			uint32_t length = 0;
@@ -188,12 +180,15 @@ class SDCardGenerator extends AbstractSystemResourceGenerator {
 			{
 			    sdCardReturn = f_write(&fileWriteHandle, «data», «len», &bytesWritten); /* Write it to the destination file */
 			}
-			if ((FR_OK == sdCardReturn) && (FR_OK == fileOpenReturn))
+			if (FR_OK == sdCardReturn)
 			{
 				«IF sigInst.instanceOf.name.startsWith("appendingFile")»
-				«sigInst.name»FilePosition += bytesWritten;
+					«sigInst.name»FilePosition += bytesWritten;
 				«ENDIF»
-			    sdCardReturn = f_close(&fileWriteHandle);
+			}
+			if (FR_OK == fileOpenReturn)
+			{
+				sdCardReturn = f_close(&fileWriteHandle);
 			}
 			if ((FR_OK != sdCardReturn) || (FR_OK != fileOpenReturn))
 			{
@@ -202,32 +197,29 @@ class SDCardGenerator extends AbstractSystemResourceGenerator {
 			return retcode;
 		''')
 	}
-	
+
 	def CodeFragment dataAccessor(SignalInstance sigInst, String varName) {
-		return if(sigInst.instanceOf.name.contains("Text")) {
+		return if (sigInst.instanceOf.name.contains("Text")) {
 			codeFragmentProvider.create('''*«varName»''');
-		} 
-		else {	
+		} else {
 			codeFragmentProvider.create('''«varName»->data''');
 		}
 	}
-		
+
 	def CodeFragment lenAccessor(SignalInstance sigInst, String varName) {
-		return if(sigInst.instanceOf.name.contains("Text")) {
+		return if (sigInst.instanceOf.name.contains("Text")) {
 			codeFragmentProvider.create('''strlen(*«varName»)''');
-		} 
-		else {	
+		} else {
 			codeFragmentProvider.create('''«varName»->length''');
 		}
 	}
 
 	def CodeFragment filenameAccessor(SignalInstance sigInst, String varName) {
 		val filenameRaw = StaticValueInferrer.infer(ModelUtils.getArgumentValue(sigInst, 'filePath'), []);
-		return  if(filenameRaw instanceof String) {
+		return if (filenameRaw instanceof String) {
 			codeFragmentProvider.create('''"«filenameRaw»"''');
-		} 
-		else {
+		} else {
 			codeFragmentProvider.create('''INVALID_ARGUMENT''');
 		}
-	}	
+	}
 }

@@ -466,7 +466,6 @@ sensor MAX44009 {
  * At the moment we only support slave mode where the XDK becomes a device that can be connected to (as compared to connecting to some other device).
  */
 
-export exception NoDeviceConnectedException;
 
 connectivity named-singleton BLE {
 	generator "org.eclipse.mita.platform.xdk110.connectivity.BleGenerator"
@@ -814,8 +813,6 @@ bus named-singleton GPIO {
 	signal digitalIn(pin : GPIOPin, mode : GPIOMode) : bool
 	signal digitalOut(pin : GPIOPin, initialValue : bool = false) : bool
 }
-
-exception EndOfFileException
 
 io named-singleton SDCard {
 	generator "org.eclipse.mita.platform.xdk110.io.SDCardGenerator"

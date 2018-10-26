@@ -131,7 +131,7 @@ class SDCardGenerator extends AbstractSystemResourceGenerator {
 			}
 			if(«fileSeekIndex» >= sdCardFileInfo.fsize)
 			{
-				sdCardReturn = FR_INVALID_PARAMETER;
+				return EXCEPTION_ENDOFFILEEXCEPTION;
 			}
 			if ((FR_OK == sdCardReturn) && (FR_OK == fileOpenReturn))
 			{

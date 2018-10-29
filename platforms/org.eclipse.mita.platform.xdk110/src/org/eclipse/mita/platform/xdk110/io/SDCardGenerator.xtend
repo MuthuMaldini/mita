@@ -123,15 +123,18 @@ class SDCardGenerator extends AbstractSystemResourceGenerator {
 			sdCardReturn = f_stat(«filename», &sdCardFileInfo);
 			if (FR_OK == sdCardReturn)
 			{
-				fileOpenReturn = f_open(&fileReadHandle, «filename», FA_OPEN_EXISTING | FA_READ);
+				if(«fileSeekIndex» >= sdCardFileInfo.fsize)
+				{
+					return EXCEPTION_ENDOFFILEEXCEPTION;
+				}
+				else
+				{
+					fileOpenReturn = f_open(&fileReadHandle, «filename», FA_OPEN_EXISTING | FA_READ);
+				}
 			}
 			if ((FR_OK == sdCardReturn) && (FR_OK == fileOpenReturn))
 			{
 			    sdCardReturn = f_lseek(&fileReadHandle, «fileSeekIndex»);
-			}
-			if(«fileSeekIndex» >= sdCardFileInfo.fsize)
-			{
-				retcode = EXCEPTION_ENDOFFILEEXCEPTION;
 			}
 			if ((FR_OK == sdCardReturn) && (FR_OK == fileOpenReturn))
 			{

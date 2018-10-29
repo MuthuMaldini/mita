@@ -140,7 +140,7 @@ class SDCardGenerator extends AbstractSystemResourceGenerator {
 			{
 			    sdCardReturn = f_read(&fileReadHandle, «data», «len», &bytesRead); /* Read a chunk of source file */
 			}
-			if (FR_OK == sdCardReturn)
+			if ((FR_OK == sdCardReturn) && (FR_OK == fileOpenReturn))
 			{
 				«IF sigInst.instanceOf.name.startsWith("appendingFile")»
 					«sigInst.name»FilePosition += bytesRead;
@@ -183,7 +183,7 @@ class SDCardGenerator extends AbstractSystemResourceGenerator {
 			{
 			    sdCardReturn = f_write(&fileWriteHandle, «data», «len», &bytesWritten); /* Write it to the destination file */
 			}
-			if (FR_OK == sdCardReturn)
+			if ((FR_OK == sdCardReturn) && (FR_OK == fileOpenReturn))
 			{
 				«IF sigInst.instanceOf.name.startsWith("appendingFile")»
 					«sigInst.name»FilePosition += bytesWritten;

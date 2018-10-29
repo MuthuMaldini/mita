@@ -156,6 +156,7 @@ class SDCardGenerator extends AbstractSystemResourceGenerator {
 			}
 			return retcode;
 		''')
+		.addHeader("MitaExceptions.h", false)
 	}
 
 	override generateSignalInstanceSetter(SignalInstance sigInst, String valueVariableName) {
